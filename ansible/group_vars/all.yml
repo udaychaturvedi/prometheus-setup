@@ -1,0 +1,62 @@
+---
+# Global packages / versions
+prometheus_version: "2.46.0"
+node_exporter_version: "1.7.0"
+alertmanager_version: "0.25.0"
+
+# Prometheus install paths and service account
+prometheus_service_user: prometheus
+prometheus_service_group: prometheus
+prometheus_install_dir: /opt/prometheus
+prometheus_data_dir: /var/lib/prometheus
+
+# Bind address used by systemd ExecStart and nginx template
+prometheus_bind_address: "0.0.0.0:9090"
+
+# nginx reverse proxy listening port (external)
+nginx_proxy_listen: 9090
+
+# S3 backup bucket (optional)
+s3_backup_bucket: prometheus-setup-backup
+
+# AWS region & bastion
+aws_region: ap-south-1
+bastion_host: 43.205.241.18
+
+# Simple IP addresses (we know these from our setup)
+primary_private_ip: "10.10.10.126"
+standby_private_ip: "10.10.11.136"
+
+# Alertmanager configuration
+alertmanager_service_user: alertmanager
+alertmanager_service_group: alertmanager
+alertmanager_install_dir: /opt/alertmanager
+alertmanager_data_dir: /var/lib/alertmanager
+alertmanager_config_dir: /etc/alertmanager
+
+# Alertmanager network settings
+alertmanager_bind_address: "0.0.0.0:9093"
+
+# Alertmanager configuration
+alertmanager_smtp_smarthost: "localhost:25"
+alertmanager_smtp_from: "alertmanager@example.com"
+alertmanager_smtp_auth_username: ""
+alertmanager_smtp_auth_password: ""
+alertmanager_slack_api_url: ""
+alertmanager_web_external_url: ""
+
+# Route configuration
+alertmanager_route_receiver: "default-receiver"
+alertmanager_route_group_wait: "10s"
+alertmanager_route_group_interval: "5m" 
+alertmanager_route_repeat_interval: "3h"
+
+# Receivers configuration
+alertmanager_receivers:
+  - name: "default-receiver"
+    email_configs:
+      - to: "admin@example.com"
+        send_resolved: true
+
+# Inhibit rules
+alertmanager_inhibit_rules: []

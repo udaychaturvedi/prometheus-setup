@@ -1,0 +1,16 @@
+prometheus_version: "2.46.0"
+node_exporter_version: "1.7.0"
+alertmanager_version: "0.25.0"
+
+prometheus_service_user: prometheus
+prometheus_service_group: prometheus
+prometheus_install_dir: /opt/prometheus
+prometheus_data_dir: /var/lib/prometheus
+
+nginx_proxy_listen: 80
+
+############################################################
+# Dynamic IP discovery from EC2 tags
+############################################################
+primary_private_ip: "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_primary') | map(attribute='value.ansible_host') | first }}"
+standby_private_ip: "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_standby') | map(attribute='value.ansible_host') | first }}"

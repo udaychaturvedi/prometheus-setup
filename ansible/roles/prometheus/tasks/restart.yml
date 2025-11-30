@@ -1,0 +1,10 @@
+---
+
+- name: Validate Prometheus config
+  command: "/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yml --test"
+  register: prom_check
+  failed_when: prom_check.rc != 0
+  changed_when: false
+
+- name: Restart prometheus
+  import_tasks: ../handlers/main.yml

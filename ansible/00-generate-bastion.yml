@@ -1,0 +1,13 @@
+- name: Detect bastion dynamically
+  hosts: role__bastion
+  gather_facts: false
+
+  tasks:
+
+    - name: Save dynamic bastion host for ProxyCommand
+      delegate_to: localhost
+      run_once: true
+      copy:
+        dest: "{{ playbook_dir }}/group_vars/bastion_dynamic.yml"
+        content: |
+          bastion_host: "{{ public_ip_address }}"

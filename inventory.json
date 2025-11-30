@@ -1,0 +1,522 @@
+{
+    "_meta": {
+        "hostvars": {
+            "10.10.0.34": {
+                "alertmanager_version": "0.25.0",
+                "ami_launch_index": 0,
+                "architecture": "x86_64",
+                "aws_region": "ap-south-1",
+                "bastion_host": "43.205.241.18",
+                "block_device_mappings": [
+                    {
+                        "device_name": "/dev/sda1",
+                        "ebs": {
+                            "attach_time": "2025-11-28T17:57:34+00:00",
+                            "delete_on_termination": true,
+                            "status": "attached",
+                            "volume_id": "vol-08c34504501dd9e2a"
+                        }
+                    }
+                ],
+                "boot_mode": "uefi-preferred",
+                "capacity_reservation_specification": {
+                    "capacity_reservation_preference": "open"
+                },
+                "client_token": "terraform-20251128175733170100000001",
+                "cpu_options": {
+                    "core_count": 1,
+                    "threads_per_core": 2
+                },
+                "current_instance_boot_mode": "uefi",
+                "ebs_optimized": false,
+                "ena_support": true,
+                "enclave_options": {
+                    "enabled": false
+                },
+                "hibernation_options": {
+                    "configured": false
+                },
+                "hypervisor": "xen",
+                "image_id": "ami-0ade68f094cc81635",
+                "instance_id": "i-04762ef7f8329f76e",
+                "instance_type": "t3.micro",
+                "key_name": "prometheus",
+                "launch_time": "2025-11-28T17:57:34+00:00",
+                "maintenance_options": {
+                    "auto_recovery": "default",
+                    "reboot_migration": "default"
+                },
+                "metadata_options": {
+                    "http_endpoint": "enabled",
+                    "http_protocol_ipv6": "disabled",
+                    "http_put_response_hop_limit": 1,
+                    "http_tokens": "optional",
+                    "instance_metadata_tags": "disabled",
+                    "state": "applied"
+                },
+                "monitoring": {
+                    "state": "disabled"
+                },
+                "network_interfaces": [
+                    {
+                        "association": {
+                            "ip_owner_id": "amazon",
+                            "public_dns_name": "ec2-43-205-241-18.ap-south-1.compute.amazonaws.com",
+                            "public_ip": "43.205.241.18"
+                        },
+                        "attachment": {
+                            "attach_time": "2025-11-28T17:57:34+00:00",
+                            "attachment_id": "eni-attach-077d2b43d3bd016b5",
+                            "delete_on_termination": true,
+                            "device_index": 0,
+                            "network_card_index": 0,
+                            "status": "attached"
+                        },
+                        "description": "",
+                        "groups": [
+                            {
+                                "group_id": "sg-0ba9cc7fec778f24e",
+                                "group_name": "prometheus-setup-bastion-sg"
+                            }
+                        ],
+                        "interface_type": "interface",
+                        "ipv6_addresses": [],
+                        "mac_address": "02:2f:f3:fc:8d:97",
+                        "network_interface_id": "eni-07bf0e894abcd60e6",
+                        "operator": {
+                            "managed": false
+                        },
+                        "owner_id": "943759745803",
+                        "private_dns_name": "ip-10-10-0-34.ap-south-1.compute.internal",
+                        "private_ip_address": "10.10.0.34",
+                        "private_ip_addresses": [
+                            {
+                                "association": {
+                                    "ip_owner_id": "amazon",
+                                    "public_dns_name": "ec2-43-205-241-18.ap-south-1.compute.amazonaws.com",
+                                    "public_ip": "43.205.241.18"
+                                },
+                                "primary": true,
+                                "private_dns_name": "ip-10-10-0-34.ap-south-1.compute.internal",
+                                "private_ip_address": "10.10.0.34"
+                            }
+                        ],
+                        "source_dest_check": true,
+                        "status": "in-use",
+                        "subnet_id": "subnet-00152f016774ed875",
+                        "vpc_id": "vpc-058faed61ee583ba0"
+                    }
+                ],
+                "network_performance_options": {
+                    "bandwidth_weighting": "default"
+                },
+                "nginx_proxy_listen": 9090,
+                "node_exporter_version": "1.7.0",
+                "operator": {
+                    "managed": false
+                },
+                "owner_id": "943759745803",
+                "placement": {
+                    "availability_zone": "ap-south-1a",
+                    "group_name": "",
+                    "region": "ap-south-1",
+                    "tenancy": "default"
+                },
+                "platform_details": "Linux/UNIX",
+                "primary_private_ip": "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_primary') | map(attribute='value.ansible_host') | first }}",
+                "private_dns_name": "ip-10-10-0-34.ap-south-1.compute.internal",
+                "private_dns_name_options": {
+                    "enable_resource_name_dns_a_record": false,
+                    "enable_resource_name_dns_aaaa_record": false,
+                    "hostname_type": "ip-name"
+                },
+                "private_ip_address": "10.10.0.34",
+                "product_codes": [],
+                "prometheus_bind_address": "0.0.0.0:9090",
+                "prometheus_data_dir": "/var/lib/prometheus",
+                "prometheus_install_dir": "/opt/prometheus",
+                "prometheus_service_group": "prometheus",
+                "prometheus_service_user": "prometheus",
+                "prometheus_version": "2.46.0",
+                "public_dns_name": "ec2-43-205-241-18.ap-south-1.compute.amazonaws.com",
+                "public_ip_address": "43.205.241.18",
+                "requester_id": "",
+                "reservation_id": "r-05b161d781d4db21f",
+                "root_device_name": "/dev/sda1",
+                "root_device_type": "ebs",
+                "s3_backup_bucket": "prometheus-setup-backup",
+                "security_groups": [
+                    {
+                        "group_id": "sg-0ba9cc7fec778f24e",
+                        "group_name": "prometheus-setup-bastion-sg"
+                    }
+                ],
+                "source_dest_check": true,
+                "standby_private_ip": "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_standby') | map(attribute='value.ansible_host') | first }}",
+                "state": {
+                    "code": 16,
+                    "name": "running"
+                },
+                "state_transition_reason": "",
+                "subnet_id": "subnet-00152f016774ed875",
+                "tags": {
+                    "Env": "dev",
+                    "Name": "prometheus-setup-bastion",
+                    "Project": "prometheus-setup",
+                    "Role": "bastion"
+                },
+                "usage_operation": "RunInstances",
+                "usage_operation_update_time": "2025-11-28T17:57:34+00:00",
+                "virtualization_type": "hvm",
+                "vpc_id": "vpc-058faed61ee583ba0"
+            },
+            "10.10.10.126": {
+                "alertmanager_version": "0.25.0",
+                "ami_launch_index": 0,
+                "architecture": "x86_64",
+                "aws_region": "ap-south-1",
+                "bastion_host": "43.205.241.18",
+                "block_device_mappings": [
+                    {
+                        "device_name": "/dev/sda1",
+                        "ebs": {
+                            "attach_time": "2025-11-28T17:57:34+00:00",
+                            "delete_on_termination": true,
+                            "status": "attached",
+                            "volume_id": "vol-0efcf7b89aeb2ac2c"
+                        }
+                    }
+                ],
+                "boot_mode": "uefi-preferred",
+                "capacity_reservation_specification": {
+                    "capacity_reservation_preference": "open"
+                },
+                "client_token": "terraform-20251128175733171200000003",
+                "cpu_options": {
+                    "core_count": 1,
+                    "threads_per_core": 1
+                },
+                "current_instance_boot_mode": "legacy-bios",
+                "ebs_optimized": false,
+                "ena_support": true,
+                "enclave_options": {
+                    "enabled": false
+                },
+                "hibernation_options": {
+                    "configured": false
+                },
+                "hypervisor": "xen",
+                "image_id": "ami-0ade68f094cc81635",
+                "instance_id": "i-0fdf05ebeb74c2416",
+                "instance_type": "t2.micro",
+                "key_name": "prometheus",
+                "launch_time": "2025-11-28T20:15:27+00:00",
+                "maintenance_options": {
+                    "auto_recovery": "default",
+                    "reboot_migration": "default"
+                },
+                "metadata_options": {
+                    "http_endpoint": "enabled",
+                    "http_protocol_ipv6": "disabled",
+                    "http_put_response_hop_limit": 1,
+                    "http_tokens": "optional",
+                    "instance_metadata_tags": "disabled",
+                    "state": "applied"
+                },
+                "monitoring": {
+                    "state": "disabled"
+                },
+                "network_interfaces": [
+                    {
+                        "attachment": {
+                            "attach_time": "2025-11-28T17:57:34+00:00",
+                            "attachment_id": "eni-attach-0865aa081aa636afc",
+                            "delete_on_termination": true,
+                            "device_index": 0,
+                            "network_card_index": 0,
+                            "status": "attached"
+                        },
+                        "description": "",
+                        "groups": [
+                            {
+                                "group_id": "sg-0f5ea4f0210e82e00",
+                                "group_name": "prometheus-setup-prom-sg"
+                            }
+                        ],
+                        "interface_type": "interface",
+                        "ipv6_addresses": [],
+                        "mac_address": "02:e2:94:dd:93:03",
+                        "network_interface_id": "eni-095b8535194fae026",
+                        "operator": {
+                            "managed": false
+                        },
+                        "owner_id": "943759745803",
+                        "private_dns_name": "ip-10-10-10-126.ap-south-1.compute.internal",
+                        "private_ip_address": "10.10.10.126",
+                        "private_ip_addresses": [
+                            {
+                                "primary": true,
+                                "private_dns_name": "ip-10-10-10-126.ap-south-1.compute.internal",
+                                "private_ip_address": "10.10.10.126"
+                            }
+                        ],
+                        "source_dest_check": true,
+                        "status": "in-use",
+                        "subnet_id": "subnet-0eb064ec121fe4b59",
+                        "vpc_id": "vpc-058faed61ee583ba0"
+                    }
+                ],
+                "network_performance_options": {
+                    "bandwidth_weighting": "default"
+                },
+                "nginx_proxy_listen": 9090,
+                "node_exporter_version": "1.7.0",
+                "operator": {
+                    "managed": false
+                },
+                "owner_id": "943759745803",
+                "placement": {
+                    "availability_zone": "ap-south-1a",
+                    "group_name": "",
+                    "region": "ap-south-1",
+                    "tenancy": "default"
+                },
+                "platform_details": "Linux/UNIX",
+                "primary_private_ip": "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_primary') | map(attribute='value.ansible_host') | first }}",
+                "private_dns_name": "ip-10-10-10-126.ap-south-1.compute.internal",
+                "private_dns_name_options": {
+                    "enable_resource_name_dns_a_record": false,
+                    "enable_resource_name_dns_aaaa_record": false,
+                    "hostname_type": "ip-name"
+                },
+                "private_ip_address": "10.10.10.126",
+                "product_codes": [],
+                "prometheus_bind_address": "0.0.0.0:9090",
+                "prometheus_data_dir": "/var/lib/prometheus",
+                "prometheus_install_dir": "/opt/prometheus",
+                "prometheus_service_group": "prometheus",
+                "prometheus_service_user": "prometheus",
+                "prometheus_version": "2.46.0",
+                "public_dns_name": "",
+                "requester_id": "",
+                "reservation_id": "r-0341a65a2cbb4faf1",
+                "root_device_name": "/dev/sda1",
+                "root_device_type": "ebs",
+                "s3_backup_bucket": "prometheus-setup-backup",
+                "security_groups": [
+                    {
+                        "group_id": "sg-0f5ea4f0210e82e00",
+                        "group_name": "prometheus-setup-prom-sg"
+                    }
+                ],
+                "source_dest_check": true,
+                "standby_private_ip": "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_standby') | map(attribute='value.ansible_host') | first }}",
+                "state": {
+                    "code": 16,
+                    "name": "running"
+                },
+                "state_transition_reason": "",
+                "subnet_id": "subnet-0eb064ec121fe4b59",
+                "tags": {
+                    "Env": "dev",
+                    "Name": "prometheus-setup-primary",
+                    "Project": "prometheus-setup",
+                    "Role": "prometheus_primary"
+                },
+                "usage_operation": "RunInstances",
+                "usage_operation_update_time": "2025-11-28T17:57:34+00:00",
+                "virtualization_type": "hvm",
+                "vpc_id": "vpc-058faed61ee583ba0"
+            },
+            "10.10.11.136": {
+                "alertmanager_version": "0.25.0",
+                "ami_launch_index": 0,
+                "architecture": "x86_64",
+                "aws_region": "ap-south-1",
+                "bastion_host": "43.205.241.18",
+                "block_device_mappings": [
+                    {
+                        "device_name": "/dev/sda1",
+                        "ebs": {
+                            "attach_time": "2025-11-28T17:57:34+00:00",
+                            "delete_on_termination": true,
+                            "status": "attached",
+                            "volume_id": "vol-07a74aa2e07ee91af"
+                        }
+                    }
+                ],
+                "boot_mode": "uefi-preferred",
+                "capacity_reservation_specification": {
+                    "capacity_reservation_preference": "open"
+                },
+                "client_token": "terraform-20251128175733171200000002",
+                "cpu_options": {
+                    "core_count": 1,
+                    "threads_per_core": 1
+                },
+                "current_instance_boot_mode": "legacy-bios",
+                "ebs_optimized": false,
+                "ena_support": true,
+                "enclave_options": {
+                    "enabled": false
+                },
+                "hibernation_options": {
+                    "configured": false
+                },
+                "hypervisor": "xen",
+                "image_id": "ami-0ade68f094cc81635",
+                "instance_id": "i-0949d1895c49dd5cd",
+                "instance_type": "t2.micro",
+                "key_name": "prometheus",
+                "launch_time": "2025-11-28T20:15:27+00:00",
+                "maintenance_options": {
+                    "auto_recovery": "default",
+                    "reboot_migration": "default"
+                },
+                "metadata_options": {
+                    "http_endpoint": "enabled",
+                    "http_protocol_ipv6": "disabled",
+                    "http_put_response_hop_limit": 1,
+                    "http_tokens": "optional",
+                    "instance_metadata_tags": "disabled",
+                    "state": "applied"
+                },
+                "monitoring": {
+                    "state": "disabled"
+                },
+                "network_interfaces": [
+                    {
+                        "attachment": {
+                            "attach_time": "2025-11-28T17:57:34+00:00",
+                            "attachment_id": "eni-attach-048d03d7c5d490a99",
+                            "delete_on_termination": true,
+                            "device_index": 0,
+                            "network_card_index": 0,
+                            "status": "attached"
+                        },
+                        "description": "",
+                        "groups": [
+                            {
+                                "group_id": "sg-0f5ea4f0210e82e00",
+                                "group_name": "prometheus-setup-prom-sg"
+                            }
+                        ],
+                        "interface_type": "interface",
+                        "ipv6_addresses": [],
+                        "mac_address": "0a:3f:95:64:a4:d3",
+                        "network_interface_id": "eni-07d8f57ea3270a948",
+                        "operator": {
+                            "managed": false
+                        },
+                        "owner_id": "943759745803",
+                        "private_dns_name": "ip-10-10-11-136.ap-south-1.compute.internal",
+                        "private_ip_address": "10.10.11.136",
+                        "private_ip_addresses": [
+                            {
+                                "primary": true,
+                                "private_dns_name": "ip-10-10-11-136.ap-south-1.compute.internal",
+                                "private_ip_address": "10.10.11.136"
+                            }
+                        ],
+                        "source_dest_check": true,
+                        "status": "in-use",
+                        "subnet_id": "subnet-053a3b0f3ee1d27bc",
+                        "vpc_id": "vpc-058faed61ee583ba0"
+                    }
+                ],
+                "network_performance_options": {
+                    "bandwidth_weighting": "default"
+                },
+                "nginx_proxy_listen": 9090,
+                "node_exporter_version": "1.7.0",
+                "operator": {
+                    "managed": false
+                },
+                "owner_id": "943759745803",
+                "placement": {
+                    "availability_zone": "ap-south-1b",
+                    "group_name": "",
+                    "region": "ap-south-1",
+                    "tenancy": "default"
+                },
+                "platform_details": "Linux/UNIX",
+                "primary_private_ip": "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_primary') | map(attribute='value.ansible_host') | first }}",
+                "private_dns_name": "ip-10-10-11-136.ap-south-1.compute.internal",
+                "private_dns_name_options": {
+                    "enable_resource_name_dns_a_record": false,
+                    "enable_resource_name_dns_aaaa_record": false,
+                    "hostname_type": "ip-name"
+                },
+                "private_ip_address": "10.10.11.136",
+                "product_codes": [],
+                "prometheus_bind_address": "0.0.0.0:9090",
+                "prometheus_data_dir": "/var/lib/prometheus",
+                "prometheus_install_dir": "/opt/prometheus",
+                "prometheus_service_group": "prometheus",
+                "prometheus_service_user": "prometheus",
+                "prometheus_version": "2.46.0",
+                "public_dns_name": "",
+                "requester_id": "",
+                "reservation_id": "r-0483d8cb6dde2d219",
+                "root_device_name": "/dev/sda1",
+                "root_device_type": "ebs",
+                "s3_backup_bucket": "prometheus-setup-backup",
+                "security_groups": [
+                    {
+                        "group_id": "sg-0f5ea4f0210e82e00",
+                        "group_name": "prometheus-setup-prom-sg"
+                    }
+                ],
+                "source_dest_check": true,
+                "standby_private_ip": "{{ hostvars | dict2items | selectattr('value.tags.Role','equalto','prometheus_standby') | map(attribute='value.ansible_host') | first }}",
+                "state": {
+                    "code": 16,
+                    "name": "running"
+                },
+                "state_transition_reason": "",
+                "subnet_id": "subnet-053a3b0f3ee1d27bc",
+                "tags": {
+                    "Env": "dev",
+                    "Name": "prometheus-setup-standby",
+                    "Project": "prometheus-setup",
+                    "Role": "prometheus_standby"
+                },
+                "usage_operation": "RunInstances",
+                "usage_operation_update_time": "2025-11-28T17:57:34+00:00",
+                "virtualization_type": "hvm",
+                "vpc_id": "vpc-058faed61ee583ba0"
+            }
+        }
+    },
+    "all": {
+        "children": [
+            "ungrouped",
+            "aws_ec2",
+            "role__bastion",
+            "role__prometheus_standby",
+            "role__prometheus_primary"
+        ]
+    },
+    "aws_ec2": {
+        "hosts": [
+            "10.10.0.34",
+            "10.10.11.136",
+            "10.10.10.126"
+        ]
+    },
+    "role__bastion": {
+        "hosts": [
+            "10.10.0.34"
+        ]
+    },
+    "role__prometheus_primary": {
+        "hosts": [
+            "10.10.10.126"
+        ]
+    },
+    "role__prometheus_standby": {
+        "hosts": [
+            "10.10.11.136"
+        ]
+    }
+}

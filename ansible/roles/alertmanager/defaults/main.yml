@@ -1,0 +1,8 @@
+---
+alertmanager_version: "0.25.0"
+alertmanager_service_user: alertmanager
+alertmanager_service_group: alertmanager
+alertmanager_install_dir: /opt/alertmanager
+alertmanager_data_dir: /var/lib/alertmanager
+alertmanager_config_dir: /etc/alertmanager
+alertmanager_bind_address: "0.0.0.0:9093"

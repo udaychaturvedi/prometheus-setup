@@ -1,0 +1,11 @@
+groups:
+  - name: failover
+    rules:
+      - alert: PrimaryPrometheusDown
+        expr: up{instance="{{ primary_private_ip }}:9090"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Primary Prometheus is down"
+          description: "Prometheus instance {{ primary_private_ip }} is unreachable for 30 seconds"

@@ -1,0 +1,4 @@
+---
+- name: Restart common services
+  debug:
+    msg: "Common services handler - extend as needed"

@@ -1,0 +1,94 @@
+---
+- name: Check if Alertmanager already exists
+  stat:
+    path: "{{ alertmanager_install_dir }}/alertmanager"
+  register: alertmanager_binary
+
+- name: Create Alertmanager user and group
+  user:
+    name: "{{ alertmanager_service_user }}"
+    system: yes
+    shell: /bin/false
+    home: /nonexistent
+    state: present
+  when: not alertmanager_binary.stat.exists
+
+- name: Create Alertmanager directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ alertmanager_service_user }}"
+    group: "{{ alertmanager_service_group }}"
+    mode: '0755'
+  loop:
+    - "{{ alertmanager_install_dir }}"
+    - "{{ alertmanager_data_dir }}"
+  when: not alertmanager_binary.stat.exists
+
+- name: Download Alertmanager
+  get_url:
+    url: "https://github.com/prometheus/alertmanager/releases/download/v{{ alertmanager_version }}/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    mode: '0644'
+  when: not alertmanager_binary.stat.exists
+
+- name: Extract Alertmanager
+  unarchive:
+    src: "/tmp/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+  when: not alertmanager_binary.stat.exists
+
+- name: Copy binaries
+  copy:
+    src: "/tmp/alertmanager-{{ alertmanager_version }}.linux-amd64/{{ item }}"
+    dest: "{{ alertmanager_install_dir }}/{{ item }}"
+    mode: '0755'
+    remote_src: yes
+  loop:
+    - alertmanager
+    - amtool
+  when: not alertmanager_binary.stat.exists
+
+- name: Set ownership on Alertmanager directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ alertmanager_service_user }}"
+    group: "{{ alertmanager_service_group }}"
+    recurse: yes
+  loop:
+    - "{{ alertmanager_install_dir }}"
+    - "{{ alertmanager_data_dir }}"
+
+- name: Render alertmanager.yml
+  template:
+    src: alertmanager.yml.j2
+    dest: "{{ alertmanager_install_dir }}/alertmanager.yml"
+    owner: "{{ alertmanager_service_user }}"
+    group: "{{ alertmanager_service_group }}"
+    mode: '0644'
+
+- name: Install systemd unit for alertmanager
+  copy:
+    dest: /etc/systemd/system/alertmanager.service
+    content: |
+      [Unit]
+      Description=Alertmanager
+      After=network.target
+
+      [Service]
+      User={{ alertmanager_service_user }}
+      Group={{ alertmanager_service_group }}
+      Type=simple
+      ExecStart={{ alertmanager_install_dir }}/alertmanager --config.file={{ alertmanager_install_dir }}/alertmanager.yml --storage.path={{ alertmanager_data_dir }} --web.listen-address={{ alertmanager_bind_address }}
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Ensure alertmanager service enabled and started
+  systemd:
+    name: alertmanager
+    enabled: true
+    state: started
+    daemon_reload: yes

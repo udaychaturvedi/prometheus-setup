@@ -1,0 +1,15 @@
+- name: Detect bastion dynamically
+  hosts: role__bastion
+  gather_facts: false
+  tasks:
+    - name: Register bastion public IP
+      set_fact:
+        bastion_host: "{{ public_ip_address }}"
+      run_once: true
+
+    - name: Save bastion_host into a vars file
+      copy:
+        dest: "{{ playbook_dir }}/group_vars/bastion_dynamic.yml"
+        content: |
+          bastion_host: "{{ bastion_host }}"
+      run_once: true

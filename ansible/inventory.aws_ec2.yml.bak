@@ -1,0 +1,19 @@
+plugin: aws_ec2
+regions:
+  - ap-south-1
+# optional cache to speed repeated runs
+cache: True
+cache_timeout: 300
+# filter to instances with a Tag:Project=prometheus-setup (adjust to your tag values)
+filters:
+  instance-state-name: running
+  tag:Project: prometheus-setup
+# Use the private IP as the ansible host (we will proxy through bastion)
+hostname_variable: private_ip_address
+# group instances by tags
+keyed_groups:
+  - key: tags.Role
+    prefix: role_
+# describe which metadata to return (keeps results compact)
+# (default is fine but we restrict to useful fields)
+strict: False

@@ -1,0 +1,33 @@
+plugin: amazon.aws.aws_ec2
+use_contrib_script_compatible_ec2_tag_keys: true
+aws_ec2_use_public_dns_hostnames: false
+
+include_extra_tags: true
+
+hostnames:
+  - private-ip-address
+
+regions:
+  - ap-south-1
+
+cache: true
+cache_timeout: 300
+
+filters:
+  instance-state-name: running
+  tag:Project: prometheus-setup
+
+hostname_variable: private_ip_address
+
+compose:
+  ansible_host: private_ip_address
+
+vars:
+  ansible_ssh_common_args: >-
+    -o ProxyCommand="ssh -W %h:%p -q -i ~/.ssh/prometheus.pem -o StrictHostKeyChecking=no ubuntu@43.205.241.18"
+
+keyed_groups:
+  - key: tags.Role
+    prefix: role_
+
+strict: false

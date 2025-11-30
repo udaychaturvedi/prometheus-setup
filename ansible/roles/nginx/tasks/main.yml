@@ -1,0 +1,23 @@
+---
+
+- name: "Install nginx on prometheus nodes only"
+  when: "'prometheus' in group_names"
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Deploy nginx reverse proxy config
+  when: "'prometheus' in group_names"
+  template:
+    src: prometheus-nginx.conf.j2
+    dest: /etc/nginx/sites-available/prometheus.conf
+  notify: Restart nginx
+
+- name: Enable site
+  when: "'prometheus' in group_names"
+  file:
+    src: /etc/nginx/sites-available/prometheus.conf
+    dest: /etc/nginx/sites-enabled/prometheus.conf
+    state: link
+  notify: Restart nginx

@@ -1,0 +1,27 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Ansible
+**/*.retry
+**/group_vars/bastion_dynamic.yml
+
+# SSH keys
+*.pem
+*.key
+
+# AWS
+**/.aws/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
