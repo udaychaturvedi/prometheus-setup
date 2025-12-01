@@ -2,8 +2,6 @@ pipeline {
     agent any
 
     environment {
-        TF_WORKSPACE = "${WORKSPACE}/terraform"
-        ANSIBLE_DIR  = "${WORKSPACE}/ansible"
         SSH_KEY_PATH = "/var/lib/jenkins/.ssh/prometheus.pem"
     }
 
@@ -23,7 +21,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------- AWS CREDS ---------------------------- */
+        /* --------------------------- AWS CREDS ---------------------------- */
         stage('Load AWS Credentials') {
             steps {
                 withCredentials([[
@@ -35,7 +33,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------- TERRAFORM INIT ---------------------------- */
+        /* --------------------------- TERRAFORM INIT ---------------------------- */
         stage('Terraform Init') {
             steps {
                 dir('terraform') {
@@ -52,7 +50,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------- TERRAFORM PLAN ---------------------------- */
+        /* --------------------------- TERRAFORM PLAN ---------------------------- */
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
@@ -69,7 +67,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------- TERRAFORM APPLY ---------------------------- */
+        /* --------------------------- TERRAFORM APPLY ---------------------------- */
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
@@ -86,7 +84,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------- BASTION IP ---------------------------- */
+        /* ------------------ GET BASTION IP ---------------------- */
         stage('Export Bastion IP') {
             steps {
                 script {
@@ -99,7 +97,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------- SSH CONFIG ---------------------------- */
+        /* ------------------ SSH CONFIG ---------------------- */
         stage('Prepare SSH Config') {
             steps {
                 sh '''
@@ -125,13 +123,13 @@ EOF
             }
         }
 
-        /* ---------------------------- ANSIBLE ---------------------------- */
+        /* ------------------ ANSIBLE ---------------------- */
         stage('Run Ansible Playbook') {
             steps {
                 sshagent(credentials: ['ssh-key-prometheus']) {
                     sh '''
                         echo "[INFO] Running Ansible Playbook"
-                        ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/site.yml
+                        ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/playbook.yml
                     '''
                 }
             }
@@ -139,7 +137,7 @@ EOF
     }
 
     post {
-        failure { echo "❌ Pipeline failed." }
         success { echo "✅ Pipeline completed successfully!" }
+        failure { echo "❌ Pipeline failed." }
     }
 }
