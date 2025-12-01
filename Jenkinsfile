@@ -86,16 +86,24 @@ pipeline {
 
         /* ------------------ GET BASTION IP ---------------------- */
         stage('Export Bastion IP') {
-            steps {
-                script {
-                    BASTION_IP = sh(
-                        script: "terraform -chdir=terraform output -raw bastion_public_ip",
-                        returnStdout: true
-                    ).trim()
-                    echo "[INFO] Bastion Public IP = ${BASTION_IP}"
-                }
+    steps {
+        withCredentials([[
+            $class: 'AmazonWebServicesCredentialsBinding',
+            credentialsId: 'aws-creds'
+        ]]) {
+            script {
+                BASTION_IP = sh(
+                    script: """
+                        terraform -chdir=terraform output -raw bastion_public_ip
+                    """,
+                    returnStdout: true
+                ).trim()
+
+                echo "[INFO] Bastion Public IP = ${BASTION_IP}"
             }
         }
+    }
+}
 
         /* ------------------ SSH CONFIG ---------------------- */
         stage('Prepare SSH Config') {
