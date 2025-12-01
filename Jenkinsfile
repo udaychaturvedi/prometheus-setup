@@ -2,15 +2,11 @@ pipeline {
     agent any
 
     environment {
-        TF_IN_AUTOMATION = "true"
-        ANSIBLE_CONFIG = "ansible/ansible.cfg"
+        AWS_REGION = "ap-south-1"
     }
 
     stages {
 
-        /* --------------------------
-         * CHECKOUT MAIN REPOSITORY
-         * -------------------------- */
         stage('Checkout Code') {
             steps {
                 checkout([
@@ -24,9 +20,6 @@ pipeline {
             }
         }
 
-        /* --------------------------
-         * AWS CREDENTIALS LOADED
-         * -------------------------- */
         stage('Load AWS Credentials') {
             steps {
                 withCredentials([[
@@ -38,9 +31,6 @@ pipeline {
             }
         }
 
-        /* --------------------------
-         * TERRAFORM INIT
-         * -------------------------- */
         stage('Terraform Init') {
             steps {
                 withCredentials([[
@@ -49,17 +39,14 @@ pipeline {
                 ]]) {
                     dir('terraform') {
                         sh '''
-                        echo "[INFO] Terraform init"
-                        terraform init -input=false
+                            echo "[INFO] Terraform init"
+                            terraform init -input=false
                         '''
                     }
                 }
             }
         }
 
-        /* --------------------------
-         * TERRAFORM PLAN
-         * -------------------------- */
         stage('Terraform Plan') {
             steps {
                 withCredentials([[
@@ -68,17 +55,14 @@ pipeline {
                 ]]) {
                     dir('terraform') {
                         sh '''
-                        echo "[INFO] Terraform plan"
-                        terraform plan -out=tfplan
+                            echo "[INFO] Terraform plan"
+                            terraform plan -out=tfplan
                         '''
                     }
                 }
             }
         }
 
-        /* --------------------------
-         * TERRAFORM APPLY
-         * -------------------------- */
         stage('Terraform Apply') {
             steps {
                 withCredentials([[
@@ -87,65 +71,55 @@ pipeline {
                 ]]) {
                     dir('terraform') {
                         sh '''
-                        echo "[INFO] Terraform apply"
-                        terraform apply -auto-approve tfplan
+                            echo "[INFO] Terraform apply"
+                            terraform apply -auto-approve tfplan
                         '''
                     }
                 }
             }
         }
 
-        /* --------------------------------------------------
-         * EXPORT BASTION IP (FIXED BLOCK with credentials!)
-         * -------------------------------------------------- */
         stage('Export Bastion IP') {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: 'aws-creds'
                 ]]) {
-                    dir('terraform') {
-                        script {
-                            env.BASTION_IP = sh(
-                                returnStdout: true,
-                                script: "terraform output -raw bastion_public_ip"
-                            ).trim()
-                        }
+                    script {
+                        env.BASTION_IP = sh(
+                            script: "terraform -chdir=terraform output -raw bastion_public_ip",
+                            returnStdout: true
+                        ).trim()
+
+                        echo "[INFO] Bastion Public IP = ${env.BASTION_IP}"
                     }
-                    sh 'echo "[INFO] Bastion Public IP = ${BASTION_IP}"'
                 }
             }
         }
 
-        /* --------------------------------------------------
-         * PREPARE SSH CONFIG FOR ANSIBLE
-         * -------------------------------------------------- */
         stage('Prepare SSH Config') {
             steps {
                 sh '''
-                echo "[INFO] Creating SSH config for bastion proxy"
-                mkdir -p ~/.ssh
+                    echo "[INFO] Creating SSH config for bastion proxy"
+                    mkdir -p /var/lib/jenkins/.ssh
 
-cat <<EOF > ~/.ssh/config
+                    cat > /var/lib/jenkins/.ssh/config <<EOF
 Host bastion
     HostName ${BASTION_IP}
     User ubuntu
-    IdentityFile ~/.ssh/prometheus.pem
+    IdentityFile /var/lib/jenkins/.ssh/prometheus.pem
 
-Host 10.10.*.*
-    ProxyCommand ssh -W %h:%p bastion
+Host 10.*
     User ubuntu
-    IdentityFile ~/.ssh/prometheus.pem
+    IdentityFile /var/lib/jenkins/.ssh/prometheus.pem
+    ProxyCommand ssh -o StrictHostKeyChecking=no -W %h:%p bastion
 EOF
 
-                chmod 600 ~/.ssh/config
+                    chmod 600 /var/lib/jenkins/.ssh/config
                 '''
             }
         }
 
-        /* --------------------------
-         * GENERATE DYNAMIC INVENTORY
-         * -------------------------- */
         stage('Generate Dynamic Inventory') {
             steps {
                 withCredentials([[
@@ -153,40 +127,36 @@ EOF
                     credentialsId: 'aws-creds'
                 ]]) {
                     sh '''
-                    echo "[INFO] Generating dynamic inventory"
-                    ansible-inventory -i ansible/inventory.aws_ec2.yml --list
+                        echo "[INFO] Generating dynamic inventory"
+                        ansible-inventory -i ansible/inventory.aws_ec2.yml --list
                     '''
                 }
             }
         }
 
-        /* --------------------------
-         * RUN ANSIBLE PLAYBOOK (BASTION JUMP HOST)
-         * -------------------------- */
         stage('Run Ansible Playbook') {
             steps {
-                sshagent (credentials: ['ubuntu']) {
+                sshagent (credentials: ['a69af01d-c489-495b-86e1-a646fea4f6e6']) {
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding',
                         credentialsId: 'aws-creds'
                     ]]) {
                         sh '''
-                        echo "[INFO] Running Ansible"
-                        ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/playbook.yml
+                            echo "[INFO] Running Ansible"
+                            ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/playbook.yml
                         '''
                     }
                 }
             }
         }
-
     }
 
     post {
-        success {
-            echo "🎉 Pipeline completed successfully!"
-        }
         failure {
             echo "❌ Pipeline failed."
+        }
+        success {
+            echo "✅ Pipeline completed successfully."
         }
     }
 }
