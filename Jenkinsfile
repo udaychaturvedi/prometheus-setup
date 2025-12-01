@@ -2,17 +2,21 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "ap-south-1"
-        SSH_KEY_PATH = "/var/lib/jenkins/.ssh/prometheus.pem"
+        TF_WORKSPACE      = "${WORKSPACE}/terraform"
+        ANSIBLE_DIR       = "${WORKSPACE}/ansible"
+        SSH_KEY_PATH      = "/var/lib/jenkins/.ssh/prometheus.pem"
     }
 
     stages {
 
+        /* ---------------------------------------------------
+         *  CODE CHECKOUT
+         * --------------------------------------------------- */
         stage('Checkout Code') {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/main"]],
+                    branches: [[name: '*/main']],
                     userRemoteConfigs: [[
                         url: 'https://github.com/udaychaturvedi/prometheus-setup',
                         credentialsId: 'git-creds'
@@ -21,93 +25,88 @@ pipeline {
             }
         }
 
+        /* ---------------------------------------------------
+         *  LOAD AWS CREDS
+         * --------------------------------------------------- */
         stage('Load AWS Credentials') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                    sh 'echo [INFO] AWS credentials loaded'
+                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh 'echo "[INFO] AWS credentials loaded"'
                 }
             }
         }
 
-        stage('Extract SSH Private Key') {
-            steps {
-                echo "[INFO] Extracting SSH key to Jenkins home"
-
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'a69af01d-c489-495b-86e1-a646fea4f6e6',
-                    keyFileVariable: 'SSH_KEY_TEMP'
-                )]) {
-
-                    sh '''
-                        mkdir -p /var/lib/jenkins/.ssh
-                        cp $SSH_KEY_TEMP /var/lib/jenkins/.ssh/prometheus.pem
-                        chmod 600 /var/lib/jenkins/.ssh/prometheus.pem
-                        echo "[INFO] SSH key installed at ${SSH_KEY_PATH}"
-                    '''
-                }
-            }
-        }
-
+        /* ---------------------------------------------------
+         *  TERRAFORM INIT
+         * --------------------------------------------------- */
         stage('Terraform Init') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                    dir('terraform') {
-                        sh """
+                dir('terraform') {
+                    withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
                             echo "[INFO] Terraform init"
                             terraform init -input=false
-                        """
+                        '''
                     }
                 }
             }
         }
 
+        /* ---------------------------------------------------
+         *  TERRAFORM PLAN
+         * --------------------------------------------------- */
         stage('Terraform Plan') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                    dir('terraform') {
-                        sh """
+                dir('terraform') {
+                    withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
                             echo "[INFO] Terraform plan"
                             terraform plan -out=tfplan
-                        """
+                        '''
                     }
                 }
             }
         }
 
+        /* ---------------------------------------------------
+         *  TERRAFORM APPLY
+         * --------------------------------------------------- */
         stage('Terraform Apply') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                    dir('terraform') {
-                        sh """
+                dir('terraform') {
+                    withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
                             echo "[INFO] Terraform apply"
                             terraform apply -auto-approve tfplan
-                        """
+                        '''
                     }
                 }
             }
         }
 
+        /* ---------------------------------------------------
+         *  EXPORT BASTION IP
+         * --------------------------------------------------- */
         stage('Export Bastion IP') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                script {
+                    BASTION_IP = sh(
+                        script: "terraform -chdir=terraform output -raw bastion_public_ip",
+                        returnStdout: true
+                    ).trim()
 
-                    script {
-                        env.BASTION_IP = sh(
-                            script: "terraform -chdir=terraform output -raw bastion_public_ip",
-                            returnStdout: true
-                        ).trim()
-                    }
-
-                    echo "[INFO] Bastion Public IP = ${env.BASTION_IP}"
+                    echo "[INFO] Bastion Public IP = ${BASTION_IP}"
                 }
             }
         }
 
+        /* ---------------------------------------------------
+         *  CREATE SSH CONFIG
+         * --------------------------------------------------- */
         stage('Prepare SSH Config') {
             steps {
                 sh '''
                     echo "[INFO] Creating SSH config"
-
                     mkdir -p /var/lib/jenkins/.ssh
 
                     cat > /var/lib/jenkins/.ssh/config <<EOF
@@ -120,7 +119,7 @@ Host bastion
 Host 10.*
     User ubuntu
     IdentityFile ${SSH_KEY_PATH}
-    ProxyCommand ssh -W %h:%p bastion
+    ProxyCommand ssh -i ${SSH_KEY_PATH} ubuntu@${BASTION_IP} -W %h:%p
     StrictHostKeyChecking no
 EOF
 
@@ -129,33 +128,30 @@ EOF
             }
         }
 
-        stage('Generate Dynamic Inventory') {
-            steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                    sh '''
-                        echo "[INFO] Checking inventory"
-                        ansible-inventory -i ansible/inventory.aws_ec2.yml --list
-                    '''
-                }
-            }
-        }
-
+        /* ---------------------------------------------------
+         *  RUN ANSIBLE WITH SSH-AGENT
+         * --------------------------------------------------- */
         stage('Run Ansible Playbook') {
             steps {
-                sshagent(['a69af01d-c489-495b-86e1-a646fea4f6e6']) {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        sh '''
-                            echo "[INFO] Running playbook"
-                            ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/playbook.yml -u ubuntu
-                        '''
-                    }
+                sshagent(credentials: ['ssh-key-prometheus']) {
+                    sh '''
+                        echo "[INFO] Running Ansible Playbook"
+                        ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/site.yml
+                    '''
                 }
             }
         }
     }
 
+    /* ---------------------------------------------------
+     *  POST ACTIONS
+     * --------------------------------------------------- */
     post {
-        failure { echo "❌ Pipeline failed." }
-        success { echo "✅ Pipeline completed successfully." }
+        failure {
+            echo "❌ Pipeline failed."
+        }
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
     }
 }
