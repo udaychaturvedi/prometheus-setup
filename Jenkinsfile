@@ -2,16 +2,14 @@ pipeline {
     agent any
 
     environment {
-        TF_WORKSPACE      = "${WORKSPACE}/terraform"
-        ANSIBLE_DIR       = "${WORKSPACE}/ansible"
-        SSH_KEY_PATH      = "/var/lib/jenkins/.ssh/prometheus.pem"
+        TF_WORKSPACE = "${WORKSPACE}/terraform"
+        ANSIBLE_DIR  = "${WORKSPACE}/ansible"
+        SSH_KEY_PATH = "/var/lib/jenkins/.ssh/prometheus.pem"
     }
 
     stages {
 
-        /* ---------------------------------------------------
-         *  CODE CHECKOUT
-         * --------------------------------------------------- */
+        /* ---------------------------- CHECKOUT ---------------------------- */
         stage('Checkout Code') {
             steps {
                 checkout([
@@ -25,24 +23,26 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         *  LOAD AWS CREDS
-         * --------------------------------------------------- */
+        /* ---------------------------- AWS CREDS ---------------------------- */
         stage('Load AWS Credentials') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
                     sh 'echo "[INFO] AWS credentials loaded"'
                 }
             }
         }
 
-        /* ---------------------------------------------------
-         *  TERRAFORM INIT
-         * --------------------------------------------------- */
+        /* ---------------------------- TERRAFORM INIT ---------------------------- */
         stage('Terraform Init') {
             steps {
                 dir('terraform') {
-                    withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]]) {
                         sh '''
                             echo "[INFO] Terraform init"
                             terraform init -input=false
@@ -52,13 +52,14 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         *  TERRAFORM PLAN
-         * --------------------------------------------------- */
+        /* ---------------------------- TERRAFORM PLAN ---------------------------- */
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]]) {
                         sh '''
                             echo "[INFO] Terraform plan"
                             terraform plan -out=tfplan
@@ -68,13 +69,14 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         *  TERRAFORM APPLY
-         * --------------------------------------------------- */
+        /* ---------------------------- TERRAFORM APPLY ---------------------------- */
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
-                    withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]]) {
                         sh '''
                             echo "[INFO] Terraform apply"
                             terraform apply -auto-approve tfplan
@@ -84,9 +86,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         *  EXPORT BASTION IP
-         * --------------------------------------------------- */
+        /* ---------------------------- BASTION IP ---------------------------- */
         stage('Export Bastion IP') {
             steps {
                 script {
@@ -94,15 +94,12 @@ pipeline {
                         script: "terraform -chdir=terraform output -raw bastion_public_ip",
                         returnStdout: true
                     ).trim()
-
                     echo "[INFO] Bastion Public IP = ${BASTION_IP}"
                 }
             }
         }
 
-        /* ---------------------------------------------------
-         *  CREATE SSH CONFIG
-         * --------------------------------------------------- */
+        /* ---------------------------- SSH CONFIG ---------------------------- */
         stage('Prepare SSH Config') {
             steps {
                 sh '''
@@ -128,9 +125,7 @@ EOF
             }
         }
 
-        /* ---------------------------------------------------
-         *  RUN ANSIBLE WITH SSH-AGENT
-         * --------------------------------------------------- */
+        /* ---------------------------- ANSIBLE ---------------------------- */
         stage('Run Ansible Playbook') {
             steps {
                 sshagent(credentials: ['ssh-key-prometheus']) {
@@ -143,15 +138,8 @@ EOF
         }
     }
 
-    /* ---------------------------------------------------
-     *  POST ACTIONS
-     * --------------------------------------------------- */
     post {
-        failure {
-            echo "❌ Pipeline failed."
-        }
-        success {
-            echo "✅ Pipeline completed successfully!"
-        }
+        failure { echo "❌ Pipeline failed." }
+        success { echo "✅ Pipeline completed successfully!" }
     }
 }
