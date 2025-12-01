@@ -11,21 +11,21 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/<your-repo>.git'
+                git branch: 'main', url: 'https://github.com/udaychaturvedi/prometheus-setup.git'
             }
         }
 
         stage('Setup SSH Agent') {
             steps {
-                sshagent (credentials: ['prometheus-ssh-key']) {
+                sshagent(credentials: ['prometheus-ssh-key']) {
                     sh "chmod 600 ${SSH_KEY}"
                 }
             }
         }
 
         stage('Terraform Init') {
-            dir('terraform') {
-                steps {
+            steps {
+                dir('terraform') {
                     sh """
                         terraform init -input=false
                     """
@@ -34,8 +34,8 @@ pipeline {
         }
 
         stage('Terraform Plan') {
-            dir('terraform') {
-                steps {
+            steps {
+                dir('terraform') {
                     sh """
                         terraform plan -out=tfplan -input=false
                     """
@@ -44,8 +44,8 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-            dir('terraform') {
-                steps {
+            steps {
+                dir('terraform') {
                     sh """
                         terraform apply -input=false -auto-approve tfplan
                     """
@@ -56,8 +56,9 @@ pipeline {
         stage('Generate Dynamic Inventory') {
             steps {
                 sh """
-                    echo '[INFO] Fetching fresh EC2 inventory'
-                    ansible-inventory -i ansible/inventory.aws_ec2.yml --list > inventory_output.json
+                    ansible-inventory \
+                      -i ansible/inventory.aws_ec2.yml \
+                      --list > inventory_output.json
                 """
                 archiveArtifacts artifacts: 'inventory_output.json', fingerprint: true
             }
@@ -65,7 +66,7 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                sshagent (credentials: ['prometheus-ssh-key']) {
+                sshagent(credentials: ['prometheus-ssh-key']) {
                     sh """
                         ansible-playbook \
                           -i ansible/inventory.aws_ec2.yml \
@@ -75,34 +76,31 @@ pipeline {
             }
         }
 
-        stage('Post-Deployment Health Check') {
+        stage('Health Check') {
             steps {
                 sh """
-                    echo '[INFO] Checking Prometheus Health...'
-
                     PROM_IP=\$(aws ec2 describe-instances \
                         --filters "Name=tag:Role,Values=prometheus_primary" \
                         --query "Reservations[].Instances[].PrivateIpAddress" \
                         --output text)
 
-                    echo "Primary Prometheus: \$PROM_IP"
+                    echo "Checking Prometheus at: \$PROM_IP"
 
-                    curl -I http://\$PROM_IP:9090/-/healthy || exit 1
-                    curl -I http://\$PROM_IP:9090/graph || exit 1
+                    curl -I http://\$PROM_IP:9090/-/healthy
                 """
             }
         }
     }
 
     post {
-        always {
-            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
-        }
         success {
-            echo "🎉 Deployment Successful!"
+            echo "🎉 Deployment pipeline completed successfully!"
         }
         failure {
-            echo "❌ Deployment Failed"
+            echo "❌ Pipeline failed. Check logs."
+        }
+        always {
+            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
         }
     }
 }
