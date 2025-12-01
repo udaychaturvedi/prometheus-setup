@@ -17,7 +17,7 @@ pipeline {
 
         stage('Setup SSH Agent') {
             steps {
-                sshagent(credentials: ['prometheus-ssh-key']) {
+                sshagent(credentials: ['4c88630f-7f20-4587-88d7-7b4aca7edaf3']) {
                     sh "chmod 600 ${SSH_KEY}"
                 }
             }
