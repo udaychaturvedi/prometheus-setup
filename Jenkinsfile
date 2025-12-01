@@ -15,13 +15,21 @@ pipeline {
             }
         }
 
-        stage('Setup AWS Credentials') {
+        stage('Terraform + AWS Setup') {
             steps {
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
                      credentialsId: 'aws-creds']
                 ]) {
-                    echo "AWS credentials loaded"
+
+                    echo "AWS credentials loaded into environment"
+
+                    withEnv([
+                        "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                        "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
+                    ]) {
+                        echo "[INFO] Exported AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+                    }
                 }
             }
         }
@@ -36,31 +44,61 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                dir('terraform') {
-                    sh '''
-                        terraform init -input=false
-                        terraform fmt -check
-                    '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-creds']
+                ]) {
+                    withEnv([
+                        "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                        "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
+                    ]) {
+                        dir('terraform') {
+                            sh '''
+                                echo "[INFO] Running terraform init with AWS creds"
+                                terraform init -input=false
+                            '''
+                        }
+                    }
                 }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                dir('terraform') {
-                    sh '''
-                        terraform plan -out=tfplan
-                    '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-creds']
+                ]) {
+                    withEnv([
+                        "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                        "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
+                    ]) {
+                        dir('terraform') {
+                            sh '''
+                                terraform plan -out=tfplan
+                            '''
+                        }
+                    }
                 }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                dir('terraform') {
-                    sh '''
-                        terraform apply -input=false -auto-approve tfplan
-                    '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-creds']
+                ]) {
+                    withEnv([
+                        "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                        "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
+                    ]) {
+                        dir('terraform') {
+                            sh '''
+                                terraform apply -input=false -auto-approve tfplan
+                            '''
+                        }
+                    }
                 }
             }
         }
@@ -107,9 +145,6 @@ pipeline {
         }
         failure {
             echo "❌ Pipeline failed. Check logs."
-        }
-        always {
-            archiveArtifacts artifacts: '**/terraform.tfstate', allowEmptyArchive: true
         }
     }
 }
