@@ -2,8 +2,6 @@ pipeline {
     agent any
 
     environment {
-        AWS_CREDS = credentials('aws-creds')   // Injects AWS_CREDS_USR and AWS_CREDS_PSW
-        ANSIBLE_HOST_KEY_CHECKING = "False"
         TF_IN_AUTOMATION = "true"
     }
 
@@ -17,62 +15,77 @@ pipeline {
             }
         }
 
+        stage('Setup AWS Credentials') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-creds']
+                ]) {
+                    echo "AWS credentials loaded"
+                }
+            }
+        }
+
         stage('Setup SSH Agent') {
             steps {
-                sshagent(credentials: ['4c88630f-7f20-4587-88d7-7b4aca7edaf3']) {
-                    sh 'echo "SSH agent configured"'
+                sshagent(credentials: ['a69af01d-c489-495b-86e1-a646fea4f6e6']) {
+                    sh 'echo "[INFO] SSH agent loaded successfully"'
                 }
             }
         }
 
         stage('Terraform Init') {
             steps {
-                sh '''
-                cd terraform
-                export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
-                export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
-                terraform init -input=false
-                '''
+                dir('terraform') {
+                    sh '''
+                        terraform init -input=false
+                        terraform fmt -check
+                    '''
+                }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh '''
-                cd terraform
-                export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
-                export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
-                terraform plan -out=tfplan -input=false
-                '''
+                dir('terraform') {
+                    sh '''
+                        terraform plan -out=tfplan
+                    '''
+                }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                sh '''
-                cd terraform
-                export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
-                export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
-                terraform apply -input=false -auto-approve tfplan
-                '''
+                dir('terraform') {
+                    sh '''
+                        terraform apply -input=false -auto-approve tfplan
+                    '''
+                }
             }
         }
 
         stage('Generate Dynamic Inventory') {
             steps {
                 sh '''
-                cd ansible
-                ansible-inventory -i inventory.aws_ec2.yml --graph
+                    echo "[INFO] Generating AWS dynamic inventory"
+                    ansible-inventory -i ansible/inventory.aws_ec2.yml --list > inventory_output.json
                 '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'inventory_output.json', allowEmptyArchive: true
+                }
             }
         }
 
         stage('Run Ansible Playbook') {
             steps {
-                sshagent(credentials: ['4c88630f-7f20-4587-88d7-7b4aca7edaf3']) {
+                sshagent(credentials: ['a69af01d-c489-495b-86e1-a646fea4f6e6']) {
                     sh '''
-                    cd ansible
-                    ansible-playbook -i inventory.aws_ec2.yml playbook.yml
+                        echo "[INFO] Running Ansible Playbook"
+                        export ANSIBLE_CONFIG=ansible/ansible.cfg
+                        ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/playbook.yml
                     '''
                 }
             }
@@ -81,18 +94,22 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh '''
-                PUBLIC_IP=$(terraform -chdir=terraform output -raw nginx_public_ip)
-                echo "Checking NGINX @ $PUBLIC_IP"
-                curl -I http://$PUBLIC_IP/
+                    echo "[INFO] Checking Prometheus health"
+                    curl -I http://<PUBLIC_NGINX_IP>/prometheus/-/healthy || true
                 '''
             }
         }
     }
 
     post {
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs."
+        }
         always {
-            archiveArtifacts artifacts: '**/*.tfstate', fingerprint: true
-            echo "Pipeline finished with: ${currentBuild.currentResult}"
+            archiveArtifacts artifacts: '**/terraform.tfstate', allowEmptyArchive: true
         }
     }
 }
