@@ -1,82 +1,108 @@
 pipeline {
     agent any
+
     environment {
-        AWS_REGION = 'ap-south-1'
-        SSH_KEY = 'prometheus'
+        AWS_REGION = "ap-south-1"
+        SSH_KEY = "~/.ssh/prometheus.pem"
+        ANSIBLE_CONFIG = "ansible/ansible.cfg"
     }
+
     stages {
+
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/<your-repo>.git'
             }
         }
-        
+
+        stage('Setup SSH Agent') {
+            steps {
+                sshagent (credentials: ['prometheus-ssh-key']) {
+                    sh "chmod 600 ${SSH_KEY}"
+                }
+            }
+        }
+
+        stage('Terraform Init') {
+            dir('terraform') {
+                steps {
+                    sh """
+                        terraform init -input=false
+                    """
+                }
+            }
+        }
+
         stage('Terraform Plan') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform init'
-                    sh 'terraform plan'
+            dir('terraform') {
+                steps {
+                    sh """
+                        terraform plan -out=tfplan -input=false
+                    """
                 }
             }
         }
-        
+
         stage('Terraform Apply') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform apply -auto-approve'
+            dir('terraform') {
+                steps {
+                    sh """
+                        terraform apply -input=false -auto-approve tfplan
+                    """
                 }
             }
         }
-        
-        stage('Dynamic Deployment') {
+
+        stage('Generate Dynamic Inventory') {
             steps {
-                sh './deploy.sh'
-            }
-        }
-        
-        stage('Health Check') {
-            steps {
-                script {
-                    // Get bastion IP for health checks
-                    sh 'cd terraform && terraform output -json > ../output.json'
-                    def outputs = readJSON file: 'output.json'
-                    env.BASTION_IP = outputs.bastion_public_ip.value
-                    env.PRIMARY_IP = outputs.primary_private_ip.value
-                    env.STANDBY_IP = outputs.standby_private_ip.value
-                }
-                
                 sh """
-                ssh -o StrictHostKeyChecking=no -i ~/.ssh/${SSH_KEY}.pem ubuntu@${BASTION_IP} "
-                    echo '=== HEALTH CHECKS ==='
-                    curl -s http://${PRIMARY_IP}:9090/-/healthy && echo ' ✅ Primary Prometheus'
-                    curl -s http://${STANDBY_IP}:9090/-/healthy && echo ' ✅ Standby Prometheus'
-                    curl -s http://${PRIMARY_IP}:9093/-/healthy && echo ' ✅ Primary AlertManager'
-                    curl -s http://${STANDBY_IP}:9093/-/healthy && echo ' ✅ Standby AlertManager'
-                    echo '=== ALL SERVICES HEALTHY ==='
-                "
+                    echo '[INFO] Fetching fresh EC2 inventory'
+                    ansible-inventory -i ansible/inventory.aws_ec2.yml --list > inventory_output.json
+                """
+                archiveArtifacts artifacts: 'inventory_output.json', fingerprint: true
+            }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                sshagent (credentials: ['prometheus-ssh-key']) {
+                    sh """
+                        ansible-playbook \
+                          -i ansible/inventory.aws_ec2.yml \
+                          ansible/playbook.yml
+                    """
+                }
+            }
+        }
+
+        stage('Post-Deployment Health Check') {
+            steps {
+                sh """
+                    echo '[INFO] Checking Prometheus Health...'
+
+                    PROM_IP=\$(aws ec2 describe-instances \
+                        --filters "Name=tag:Role,Values=prometheus_primary" \
+                        --query "Reservations[].Instances[].PrivateIpAddress" \
+                        --output text)
+
+                    echo "Primary Prometheus: \$PROM_IP"
+
+                    curl -I http://\$PROM_IP:9090/-/healthy || exit 1
+                    curl -I http://\$PROM_IP:9090/graph || exit 1
                 """
             }
         }
     }
-    
+
     post {
         always {
-            // Cleanup
-            sh 'rm -f output.json'
+            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
         }
         success {
-            emailext (
-                subject: "SUCCESS: Prometheus HA Deployment",
-                body: "Prometheus HA infrastructure deployed successfully!\n\nBastion: ${env.BASTION_IP}\nPrimary: ${env.PRIMARY_IP}\nStandby: ${env.STANDBY_IP}",
-                to: "admin@company.com"
-            )
+            echo "🎉 Deployment Successful!"
         }
         failure {
-            emailext (
-                subject: "FAILED: Prometheus HA Deployment",
-                body: "Prometheus HA deployment failed. Check Jenkins logs.",
-                to: "@company.com"
-            )
+            echo "❌ Deployment Failed"
         }
     }
 }
